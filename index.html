@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>退休年龄计算器</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        .result { margin-top: 20px; padding: 10px; background-color: #e9ecef; border-radius: 4px; }
+        #retireTypeGroup { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>退休年龄计算器</h1>
+        <label for="gender">性别：</label>
+        <select id="gender" onchange="toggleRetireType()">
+            <option value="男">男</option>
+            <option value="女">女</option>
+        </select>
+
+        <label for="birthdate">出生年月：</label>
+        <input type="month" id="birthdate" required>
+
+        <div id="retireTypeGroup">
+            <label for="retireType">退休类型：</label>
+            <select id="retireType">
+                <option value="原55">原55岁退休（女干部）</option>
+                <option value="原50">原50岁退休（女工人）</option>
+            </select>
+        </div>
+
+        <button onclick="calculate()">计算</button>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        function toggleRetireType() {
+            document.getElementById("retireTypeGroup").style.display = 
+                document.getElementById("gender").value === "女" ? "block" : "none";
+        }
+
+        function calculate() {
+            const gender = document.getElementById("gender").value;
+            const [year, month] = document.getElementById("birthdate").value.split("-").map(Number);
+            const birthdate = new Date(year, month - 1);
+
+            let result = {};
+            if(gender === "男") {
+                result = calculateMale(birthdate);
+            } else {
+                const retireType = document.getElementById("retireType").value;
+                result = calculateFemale(birthdate, retireType);
+            }
+
+            document.getElementById("result").innerHTML = `
+                <p><strong>法定退休年龄：</strong>${result.age}</p>
+                <p><strong>预计退休时间：</strong>${result.date}</p>`;
+        }
+
+        function calculateMale(bd) {
+            const base = new Date(1965, 0);
+            const final = new Date(1976, 8);
+            
+            if(bd < base) return format(60, 0, bd);
+            if(bd > final) return format(63, 0, bd);
+            
+            const delay = Math.floor(monthDiff(base, bd)/4) + 1;
+            return format(60, Math.min(delay, 36), bd);
+        }
+
+        function calculateFemale(bd, type) {
+            const config = {
+                "原55": { base: new Date(1970,0), final: new Date(1981,8), baseAge:55, cycle:4, max:36 },
+                "原50": { base: new Date(1975,0), final: new Date(1984,8), baseAge:50, cycle:2, max:60 }
+            }[type];
+            
+            if(bd < config.base) return format(config.baseAge, 0, bd);
+            if(bd > config.final) return format(config.baseAge + (type === "原55" ? 3 : 5), 0, bd);
+            
+            const delay = Math.floor(monthDiff(config.base, bd)/config.cycle) + 1;
+            return format(config.baseAge, Math.min(delay, config.max), bd);
+        }
+
+        function monthDiff(a, b) {
+            return (b.getFullYear() - a.getFullYear())*12 + (b.getMonth() - a.getMonth());
+        }
+
+        function format(baseAge, delay, bd) {
+            const totalMonths = baseAge*12 + delay;
+            const retireDate = new Date(bd);
+            retireDate.setFullYear(retireDate.getFullYear() + Math.floor(totalMonths/12));
+            retireDate.setMonth(retireDate.getMonth() + (totalMonths%12) + 1);
+            
+            return {
+                age: `${Math.floor(totalMonths/12)}岁${totalMonths%12 ? `${totalMonths%12}个月` : ""}`,
+                date: retireDate.toISOString().slice(0,7)
+            };
+        }
+    </script>
+</body>
+</html>
